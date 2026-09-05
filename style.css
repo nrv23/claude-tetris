@@ -231,6 +231,40 @@ kbd {
   text-transform: uppercase;
 }
 
+#pm-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #555570;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+#pm-name-row.hidden {
+  display: none;
+}
+
+#player-name {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: #e0e0e0;
+  background: #1a1a25;
+  border: 1px solid #3a3a5a;
+  border-radius: 6px;
+  padding: 5px 10px;
+  width: 130px;
+  outline: none;
+  user-select: text;
+}
+
+#player-name:focus {
+  border-color: #7aa2f7;
+}
+
 #start-level {
   font-family: 'Courier New', Courier, monospace;
   font-size: 14px;

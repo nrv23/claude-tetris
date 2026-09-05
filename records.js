@@ -164,6 +164,15 @@
       return;
     }
 
+    // Si el jugador ya dio su nombre en la pantalla de inicio, guardar directo.
+    const knownName = String(window.PauseMenu?.playerName?.() ?? '').trim().slice(0, 12);
+    if (knownName) {
+      const idx = addEntry(data, { name: knownName, score, lines: linesDone, date: new Date().toISOString() });
+      save(data);
+      renderInto(box, idx);
+      return;
+    }
+
     const form = el('div', 'records-form');
     form.appendChild(el('p', 'records-msg', '¡Nuevo record! Escribe tu nombre:'));
     const row = el('div', 'records-form-row');

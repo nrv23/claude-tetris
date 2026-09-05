@@ -4,6 +4,8 @@
 // variables/funciones globales (init, paused, gameOver, current, overlay...).
 (function () {
   const STORAGE_KEY = 'tetris.startLevel';
+  const NAME_KEY = 'tetris.playerName';
+  const MAX_NAME = 12;
   const MIN_LEVEL = 1;
   const MAX_LEVEL = 15;
 
@@ -23,6 +25,17 @@
 
   function saveStartLevel(n) {
     try { localStorage.setItem(STORAGE_KEY, String(n)); } catch (_) { /* ignorar */ }
+  }
+
+  // ---- Nombre del jugador (se pide una sola vez por sesión) ----
+  let playerNameValue = ''; // fijado al pulsar Jugar la primera vez
+
+  function loadPlayerName() {
+    try { return String(localStorage.getItem(NAME_KEY) ?? '').slice(0, MAX_NAME); } catch (_) { return ''; }
+  }
+
+  function savePlayerName(name) {
+    try { localStorage.setItem(NAME_KEY, name); } catch (_) { /* ignorar */ }
   }
 
   // ---- Construcción del DOM ----
@@ -72,6 +85,19 @@
     controlsList.appendChild(li);
   }
 
+  const nameRow = document.createElement('label');
+  nameRow.id = 'pm-name-row';
+  nameRow.htmlFor = 'player-name';
+  nameRow.append('Nombre');
+  const nameInput = document.createElement('input');
+  nameInput.id = 'player-name';
+  nameInput.type = 'text';
+  nameInput.maxLength = MAX_NAME;
+  nameInput.placeholder = 'Tu nombre';
+  nameInput.autocomplete = 'off';
+  nameInput.value = loadPlayerName();
+  nameRow.appendChild(nameInput);
+
   const levelRow = document.createElement('label');
   levelRow.id = 'pm-level-row';
   levelRow.htmlFor = 'start-level';
@@ -92,10 +118,15 @@
   const startExtras = document.createElement('div');
   startExtras.id = 'start-extras';
 
-  menu.append(playBtn, resumeBtn, restartMenuBtn, controlsBtn, controlsList, levelRow, startExtras);
+  menu.append(playBtn, resumeBtn, restartMenuBtn, controlsBtn, controlsList, nameRow, levelRow, startExtras);
   overlayBox.appendChild(menu);
 
   // ---- Helpers ----
+  // Nombre fijado para esta sesión ('' si aún no se ha pulsado Jugar).
+  function playerName() {
+    return playerNameValue;
+  }
+
   function startLevel() {
     const n = parseInt(levelSelect.value, 10);
     return Number.isInteger(n) ? Math.min(MAX_LEVEL, Math.max(MIN_LEVEL, n)) : MIN_LEVEL;
@@ -113,6 +144,8 @@
     resumeBtn.classList.toggle('hidden', mode !== 'pause');
     restartMenuBtn.classList.toggle('hidden', mode !== 'pause');
     startExtras.classList.toggle('hidden', mode !== 'start');
+    // El nombre solo se pide en la pantalla de inicio, una vez por sesión.
+    nameRow.classList.toggle('hidden', mode !== 'start' || playerNameValue !== '');
     setGameOverElementsVisible(false);
     menu.classList.remove('hidden');
     overlay.classList.remove('hidden');
@@ -149,11 +182,21 @@
   }
 
   function startGame() {
+    if (playerNameValue === '') {
+      playerNameValue = nameInput.value.trim().slice(0, MAX_NAME) || 'Jugador';
+      savePlayerName(playerNameValue);
+    }
     hide();
     init(startLevel());
   }
 
   // ---- Eventos ----
+  // Las teclas escritas en el input no deben llegar al juego; Enter = Jugar.
+  nameInput.addEventListener('keydown', e => {
+    e.stopPropagation();
+    if (e.key === 'Enter') { e.preventDefault(); startGame(); }
+  });
+
   playBtn.addEventListener('click', () => { playBtn.blur(); startGame(); });
 
   resumeBtn.addEventListener('click', () => {
@@ -190,7 +233,8 @@
     if (e.code === 'KeyP' || e.code === 'Escape') levelSelect.blur();
   });
 
-  window.PauseMenu = { show, hide, isOpen, showStart, startLevel };
+  window.PauseMenu = { show, hide, isOpen, showStart, startLevel, playerName };
 
   showStart();
+  if (!nameInput.value) setTimeout(() => nameInput.focus(), 0);
 })();

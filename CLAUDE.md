@@ -42,7 +42,7 @@ All game logic lives in a single script executed at load time, using module-leve
 ## Pause menu / start screen (`pause-menu.js`)
 
 - Exposes `window.PauseMenu = { show(), hide(), isOpen(), showStart(), startLevel() }`. `game.js` calls `show()`/`hide()` from `togglePause()` and `startLevel()` from the game-over restart button.
-- Builds `#pause-menu` inside `.overlay-box`: **Jugar** (start screen only), **Reanudar** / **Reiniciar** (pause only), **Ver controles** (toggles `#pm-controls-list`), `<select id="start-level">` 1–15 persisted in `tetris.startLevel`, and `#start-extras` (start screen only) where `Records.renderInto()` draws the top-5 table. While the menu is open `#restart-btn` and `#overlay-score` get the `hidden` class.
+- Builds `#pause-menu` inside `.overlay-box`: **Jugar** (start screen only), **Reanudar** / **Reiniciar** (pause only), **Ver controles** (toggles `#pm-controls-list`), `<input id="player-name">` (asked once per page load: hidden after the first **Jugar**; value persisted in `tetris.playerName` and exposed via `playerName()`, which `records.js` uses to save a record without asking again), `<select id="start-level">` 1–15 persisted in `tetris.startLevel`, and `#start-extras` (start screen only) where `Records.renderInto()` draws the top-5 table. While the menu is open `#restart-btn` and `#overlay-score` get the `hidden` class.
 - Buttons `blur()` after click so Space/arrows don't re-trigger them. Styles live in the `/* ---- Menú de pausa ---- */` block of `style.css`.
 
 ## Records (`records.js`)

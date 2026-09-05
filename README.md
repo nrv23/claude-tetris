@@ -43,6 +43,7 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Pausa** y **Game Over** con opción de reinicio.
 - **Tabla de records** local (`records.js`): top 5 puntuaciones con nombre, mejor combo y máximo de líneas, guardados en `localStorage` (clave `tetris.records`). Al hacer game over con una puntuación que entra en el top se pide el nombre; la fila nueva se resalta y hay un botón para borrar los records.
+- **Nombre del jugador** pedido una sola vez en la pantalla de inicio; los records se guardan con ese nombre sin volver a preguntar.
 - **Skins** (temas visuales) intercambiables sin recargar: Retro, Neon, Pastel y Pixel art.
 
 ---
