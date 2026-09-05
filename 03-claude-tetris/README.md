@@ -17,6 +17,7 @@ Implementación del clásico **Tetris** en JavaScript vanilla, usando HTML5 Canv
     - [Opción 1: abrir el archivo directamente](#opción-1-abrir-el-archivo-directamente)
     - [Opción 2: servidor local (recomendado)](#opción-2-servidor-local-recomendado)
   - [Controles](#controles)
+  - [Records](#records)
   - [Cómo funciona](#cómo-funciona)
     - [1. `index.html`](#1-indexhtml)
     - [2. `style.css`](#2-stylecss)
@@ -43,6 +44,7 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Menú de pausa** (`P` o `Esc`) con **Reanudar**, **Reiniciar** (nueva partida sin recargar), **Ver controles** y selector de **nivel inicial** (1–15, recordado en `localStorage`). Mientras el menú está abierto ninguna tecla llega al juego.
 - **Game Over** con opción de reinicio.
+- **Tabla de records local** (top 5 con nombre, mejor combo y máximo de líneas) guardada en `localStorage`.
 
 ---
 
@@ -89,9 +91,22 @@ Después abre `http://localhost:8000` en el navegador.
 
 ---
 
+## Records
+
+El juego guarda una tabla de records en `localStorage` (clave `tetris.records`), gestionada por `records.js`:
+
+- **Top 5** de puntuaciones con nombre del jugador, líneas y fecha.
+- Al terminar una partida que entra en el top, el overlay de **Game Over** pide el nombre (máx. 12 caracteres, por defecto "Jugador") y resalta la fila conseguida.
+- La tabla se muestra también en la **pantalla de inicio**, junto al **mejor combo** (líneas limpiadas en piezas consecutivas) y las **máximas líneas** en una partida.
+- Botón **Borrar records** para reiniciar la tabla.
+
+Si `records.js` no se carga, el juego funciona igual: `game.js` invoca la tabla con `window.Records?.`.
+
+---
+
 ## Cómo funciona
 
-El juego se compone de tres archivos que cooperan:
+El juego se compone de cuatro archivos que cooperan:
 
 ### 1. `index.html`
 
@@ -118,6 +133,7 @@ Contiene toda la lógica del juego. A grandes rasgos:
 - **Puntuación**: usa la tabla clásica `[0, 100, 300, 500, 800]` multiplicada por el nivel actual; el hard drop suma 2 puntos por celda recorrida y el soft drop 1 punto por fila.
 - **Nivel y velocidad**: `level = nivelInicial + floor(lines / 10)`; la velocidad de caída se calcula como `max(100, 1000 − (level − 1) × 90)` milisegundos (`intervalForLevel`).
 - **Menú de pausa** (`togglePause`, `showPauseMenu`, `hidePauseMenu`): al pausar se cancela el `requestAnimationFrame` y se muestra el menú; al reanudar se re-siembra `lastTime` para evitar un salto de tiempo. El listener de teclado ignora todo salvo `P`/`Esc` mientras `paused`, `gameOver` o el menú esté abierto. El nivel inicial se guarda en la clave `tetris.startLevel`.
+- **Combo** (`combo`, `maxCombo`): cada pieza que limpia líneas suma 1 al combo; una pieza sin líneas lo reinicia. El máximo se envía a `records.js` al terminar.
 - **Ghost piece** (`ghostY`): proyecta la posición final de la pieza actual hacia abajo y la dibuja con `globalAlpha = 0.2`.
 
 ### Flujo del juego
@@ -138,7 +154,11 @@ init()
    keydown → mover / rotar / soft-drop / hard-drop / pausa
 ```
 
-Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), se dispara `endGame()` y se muestra el overlay de **Game Over**.
+Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), se dispara `endGame()`, se muestra el overlay de **Game Over** y se llama a `Records.onGameOver()`.
+
+### 4. `records.js`
+
+Expone `window.Records` con `onGameOver(stats)`, `renderStart()`, `renderInto(el)`, `clear()`, `load()` y `reset()`. Crea su UI (`#records-box`) dentro de `.overlay-box` y captura las teclas del campo de nombre con `stopPropagation()` para que no lleguen al juego.
 
 ---
 
@@ -160,7 +180,8 @@ Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), se dispara
 03-tetris/
 ├── index.html      # Estructura del DOM y canvas
 ├── style.css       # Estilos del juego (dark theme)
-├── game.js         # Toda la lógica del Tetris (~300 líneas)
+├── game.js         # Toda la lógica del Tetris (~330 líneas)
+├── records.js      # Tabla de records en localStorage
 └── README.md
 ```
 

@@ -51,7 +51,7 @@ const startLevelSelect = document.getElementById('start-level');
 const MAX_START_LEVEL = 15;
 const START_LEVEL_KEY = 'tetris.startLevel';
 
-let board, current, next, score, lines, level, baseLevel, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let board, current, next, score, lines, level, baseLevel, paused, gameOver, lastTime, dropAccum, dropInterval, animId, combo, maxCombo;
 
 function intervalForLevel(lvl) {
   return Math.max(100, 1000 - (lvl - 1) * 90);
@@ -142,6 +142,7 @@ function clearLines() {
     dropInterval = intervalForLevel(level);
     updateHUD();
   }
+  return cleared;
 }
 
 function ghostY() {
@@ -169,7 +170,8 @@ function softDrop() {
 
 function lockPiece() {
   merge();
-  clearLines();
+  const n = clearLines();
+  if (n) { combo++; maxCombo = Math.max(maxCombo, combo); } else combo = 0;
   spawn();
 }
 
@@ -226,6 +228,8 @@ function draw() {
     for (let c = 0; c < COLS; c++)
       drawBlock(ctx, c, r, board[r][c], BLOCK);
 
+  if (!current) return;
+
   // ghost
   const gy = ghostY();
   for (let r = 0; r < current.shape.length; r++)
@@ -257,7 +261,23 @@ function endGame() {
   hidePauseMenu();
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
+  restartBtn.textContent = 'Reiniciar';
   overlay.classList.remove('hidden');
+  window.Records?.onGameOver({ score, lines, maxCombo, level });
+}
+
+// Pantalla de inicio: tablero vacío + tabla de records. La partida arranca con el botón.
+function showStart() {
+  board = createBoard();
+  current = null;
+  gameOver = true;
+  draw();
+  overlayTitle.textContent = 'TETRIS';
+  overlayScore.textContent = '';
+  restartBtn.textContent = 'Jugar';
+  hidePauseMenu();
+  overlay.classList.remove('hidden');
+  window.Records?.renderStart();
 }
 
 // ---- Menú de pausa ----
@@ -284,7 +304,7 @@ function isMenuOpen() {
 }
 
 function togglePause() {
-  if (gameOver) return;
+  if (gameOver || !current) return;
   paused = !paused;
   if (!paused) {
     hidePauseMenu();
@@ -294,6 +314,7 @@ function togglePause() {
     animId = requestAnimationFrame(loop);
   } else {
     cancelAnimationFrame(animId);
+    window.Records?.clear();
     showPauseMenu();
     pmResume.focus();
   }
@@ -312,7 +333,7 @@ function loop(ts) {
     }
   }
   draw();
-  animId = requestAnimationFrame(loop);
+  if (!gameOver) animId = requestAnimationFrame(loop);
 }
 
 function init() {
@@ -325,11 +346,14 @@ function init() {
   gameOver = false;
   dropInterval = intervalForLevel(level);
   dropAccum = 0;
+  combo = 0;
+  maxCombo = 0;
   lastTime = performance.now();
   next = randomPiece();
   spawn();
   updateHUD();
   hidePauseMenu();
+  window.Records?.clear();
   overlay.classList.add('hidden');
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
@@ -342,7 +366,7 @@ document.addEventListener('keydown', e => {
     return;
   }
   // Con el menú abierto no llega ninguna tecla al juego.
-  if (paused || gameOver || isMenuOpen()) return;
+  if (paused || gameOver || !current || isMenuOpen()) return;
   switch (e.code) {
     case 'ArrowLeft':
       if (!collide(current.shape, current.x - 1, current.y)) current.x--;
@@ -365,7 +389,7 @@ document.addEventListener('keydown', e => {
   updateHUD();
 });
 
-restartBtn.addEventListener('click', init);
+restartBtn.addEventListener('click', () => { restartBtn.blur(); init(); });
 
 // ---- Eventos del menú de pausa ----
 pmResume.addEventListener('click', e => {
@@ -405,4 +429,5 @@ pauseMenu.addEventListener('keydown', e => {
   e.stopPropagation();
 });
 
-init();
+// Al cargar solo se muestra la pantalla de inicio; el juego empieza al pulsar "Jugar".
+showStart();
