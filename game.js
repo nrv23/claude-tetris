@@ -40,10 +40,14 @@ const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 
-let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let board, current, next, score, lines, level, baseLevel, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
+}
+
+function intervalForLevel(lvl) {
+  return Math.max(100, 1000 - (lvl - 1) * 90);
 }
 
 function randomPiece() {
@@ -106,8 +110,8 @@ function clearLines() {
   if (cleared) {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
-    level = Math.floor(lines / 10) + 1;
-    dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+    level = baseLevel + Math.floor(lines / 10);
+    dropInterval = intervalForLevel(level);
     updateHUD();
   }
 }
@@ -194,6 +198,8 @@ function draw() {
     for (let c = 0; c < COLS; c++)
       drawBlock(ctx, c, r, board[r][c], BLOCK);
 
+  if (!current) return;
+
   // ghost
   const gy = ghostY();
   for (let r = 0; r < current.shape.length; r++)
@@ -227,9 +233,11 @@ function endGame() {
 }
 
 function togglePause() {
-  if (gameOver) return;
+  if (gameOver || !current) return;
   paused = !paused;
   if (!paused) {
+    overlay.classList.add('hidden');
+    window.PauseMenu?.hide();
     lastTime = performance.now();
     loop(lastTime);
   } else {
@@ -237,6 +245,7 @@ function togglePause() {
     overlayTitle.textContent = 'PAUSA';
     overlayScore.textContent = '';
     overlay.classList.remove('hidden');
+    window.PauseMenu?.show();
   }
 }
 
@@ -253,17 +262,18 @@ function loop(ts) {
     }
   }
   draw();
-  animId = requestAnimationFrame(loop);
+  if (!gameOver) animId = requestAnimationFrame(loop);
 }
 
-function init() {
+function init(startLevel = 1) {
   board = createBoard();
   score = 0;
   lines = 0;
-  level = 1;
+  baseLevel = startLevel;
+  level = startLevel;
   paused = false;
   gameOver = false;
-  dropInterval = 1000;
+  dropInterval = intervalForLevel(level);
   dropAccum = 0;
   lastTime = performance.now();
   next = randomPiece();
@@ -275,8 +285,9 @@ function init() {
 }
 
 document.addEventListener('keydown', e => {
-  if (e.code === 'KeyP') { togglePause(); return; }
-  if (paused || gameOver) return;
+  if (e.code === 'KeyP' || e.code === 'Escape') { togglePause(); return; }
+  if (paused || gameOver || !current) return;
+  if (window.PauseMenu?.isOpen()) return;
   switch (e.code) {
     case 'ArrowLeft':
       if (!collide(current.shape, current.x - 1, current.y)) current.x--;
@@ -299,6 +310,12 @@ document.addEventListener('keydown', e => {
   updateHUD();
 });
 
-restartBtn.addEventListener('click', init);
+restartBtn.addEventListener('click', () => init(window.PauseMenu?.startLevel() ?? 1));
 
-init();
+// Al cargar solo se prepara el tablero vacío; la partida arranca desde la
+// pantalla de inicio (pause-menu.js). Si ese script no existe, se inicia directo.
+board = createBoard();
+draw();
+document.addEventListener('DOMContentLoaded', () => {
+  if (!window.PauseMenu) init();
+});

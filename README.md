@@ -85,12 +85,28 @@ Después abre `http://localhost:8000` en el navegador.
 | `↓`       | Soft drop (bajar más rápido)      |
 | `Espacio` | Hard drop (caída instantánea)     |
 | `P`       | Pausar / reanudar                 |
+| `Esc`     | Pausar / reanudar                 |
+
+---
+
+## Menú de pausa y pantalla de inicio
+
+Al cargar la página no arranca la partida: se muestra una **pantalla de inicio** con el título, el botón **Jugar** y un selector de **Nivel inicial** (1–15). El nivel elegido se guarda en `localStorage` (`tetris.startLevel`) y se reutiliza en las siguientes partidas, incluido el botón *Reiniciar* de Game Over.
+
+Al pulsar `P` o `Esc` durante la partida se abre el **menú de pausa** con:
+
+- **Reanudar** — vuelve al juego.
+- **Reiniciar** — empieza una nueva partida con el nivel inicial seleccionado, sin recargar.
+- **Ver controles** — despliega la lista de teclas dentro del menú.
+- **Nivel inicial** — selector para la próxima partida.
+
+Mientras el menú está abierto se bloquean todas las teclas del juego (solo `P`/`Esc` lo cierran). Toda la lógica vive en `pause-menu.js`, que se carga después de `game.js` y expone `window.PauseMenu` (`show`, `hide`, `isOpen`, `showStart`, `startLevel`).
 
 ---
 
 ## Cómo funciona
 
-El juego se compone de tres archivos que cooperan:
+El juego se compone de tres archivos que cooperan (más `pause-menu.js`, que añade el menú de pausa y la pantalla de inicio):
 
 ### 1. `index.html`
 
@@ -115,7 +131,7 @@ Contiene toda la lógica del juego. A grandes rasgos:
 - **Game loop** (`loop`): basado en `requestAnimationFrame`, acumula el tiempo transcurrido y baja la pieza una fila cuando se supera `dropInterval`.
 - **Limpieza de líneas** (`clearLines`): recorre el tablero de abajo hacia arriba; cada fila completa se elimina y se inserta una vacía en la cima.
 - **Puntuación**: usa la tabla clásica `[0, 100, 300, 500, 800]` multiplicada por el nivel actual; el hard drop suma 2 puntos por celda recorrida y el soft drop 1 punto por fila.
-- **Nivel y velocidad**: el nivel sube cada 10 líneas; la velocidad de caída se calcula como `max(100, 1000 − (level − 1) × 90)` milisegundos.
+- **Nivel y velocidad**: el nivel sube cada 10 líneas a partir del nivel inicial elegido (`level = baseLevel + floor(lines / 10)`); la velocidad de caída se calcula como `max(100, 1000 − (level − 1) × 90)` milisegundos.
 - **Ghost piece** (`ghostY`): proyecta la posición final de la pieza actual hacia abajo y la dibuja con `globalAlpha = 0.2`.
 
 ### Flujo del juego
@@ -159,6 +175,7 @@ Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), se dispara
 ├── index.html      # Estructura del DOM y canvas
 ├── style.css       # Estilos del juego (dark theme)
 ├── game.js         # Toda la lógica del Tetris (~300 líneas)
+├── pause-menu.js   # Menú de pausa, pantalla de inicio y nivel inicial
 └── README.md
 ```
 
