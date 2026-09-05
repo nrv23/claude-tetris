@@ -40,7 +40,7 @@ const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 
-let board, current, next, score, lines, level, baseLevel, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let board, current, next, score, lines, level, baseLevel, paused, gameOver, lastTime, dropAccum, dropInterval, animId, combo, maxCombo;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -114,6 +114,7 @@ function clearLines() {
     dropInterval = intervalForLevel(level);
     updateHUD();
   }
+  return cleared;
 }
 
 function ghostY() {
@@ -141,7 +142,8 @@ function softDrop() {
 
 function lockPiece() {
   merge();
-  clearLines();
+  const n = clearLines();
+  if (n) { combo++; maxCombo = Math.max(maxCombo, combo); } else combo = 0;
   spawn();
 }
 
@@ -230,6 +232,7 @@ function endGame() {
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
   overlay.classList.remove('hidden');
+  window.Records?.onGameOver({ score, lines, maxCombo, level });
 }
 
 function togglePause() {
@@ -275,6 +278,8 @@ function init(startLevel = 1) {
   gameOver = false;
   dropInterval = intervalForLevel(level);
   dropAccum = 0;
+  combo = 0;
+  maxCombo = 0;
   lastTime = performance.now();
   next = randomPiece();
   spawn();
