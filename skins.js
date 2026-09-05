@@ -169,16 +169,14 @@
     const select = document.getElementById('skin-select');
     if (select && select.value !== key) select.value = key;
     // Redibujar de inmediato (también en pausa o game over).
-    if (hasCurrentPiece()) {
-      draw();
-      drawNext();
-    }
+    draw(); // seguro sin pieza activa (game.js protege ghost/pieza)
+    if (hasNextPiece()) drawNext();
     return true;
   }
 
-  function hasCurrentPiece() {
-    // `current` es el `let` global de game.js (pieza activa); existe tras init().
-    return typeof current !== 'undefined' && !!current;
+  function hasNextPiece() {
+    // `next` es el `let` global de game.js; existe tras init().
+    return typeof next !== 'undefined' && !!next;
   }
 
   function drawBlock(context, x, y, colorIndex, size, alpha) {

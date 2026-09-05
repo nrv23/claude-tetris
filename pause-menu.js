@@ -142,6 +142,9 @@
     overlayTitle.textContent = 'TETRIS';
     overlayScore.textContent = '';
     levelEl.textContent = startLevel(); // el HUD refleja el nivel con el que se empezará
+    // Tabla de records (records.js se carga antes que este script).
+    startExtras.textContent = '';
+    window.Records?.renderInto(startExtras);
     openMenu('start');
   }
 
