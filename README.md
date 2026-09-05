@@ -42,6 +42,7 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Sistema de puntuación** clásico de Tetris (100 / 300 / 500 / 800 multiplicado por nivel).
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Pausa** y **Game Over** con opción de reinicio.
+- **Skins** (temas visuales) intercambiables sin recargar: Retro, Neon, Pastel y Pixel art.
 
 ---
 
@@ -138,6 +139,19 @@ init()
 
 Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), se dispara `endGame()` y se muestra el overlay de **Game Over**.
 
+### 4. `skins.js` — temas visuales
+
+Añade un selector **SKIN** al panel lateral con cuatro apariencias completas:
+
+| Skin          | Descripción                                                                  |
+| ------------- | ---------------------------------------------------------------------------- |
+| **Retro**     | Bloques cuadrados y colores planos (el estilo original).                    |
+| **Neon**      | Fondo negro y bloques con brillo (`shadowBlur`) en colores saturados.       |
+| **Pastel**    | Paleta suave con esquinas redondeadas y un brillo blanco tenue.             |
+| **Pixel art** | Paleta tipo NES, borde oscuro, píxel de luz y textura punteada en cada bloque. |
+
+Cada skin define su paleta, el color de la rejilla y su propia función de dibujo; `game.js` delega en `Skins.drawBlock` y el cambio se aplica al instante (incluso en pausa). La preferencia se guarda en `localStorage` bajo la clave `tetris.skin` y se restaura al recargar.
+
 ---
 
 ## Tecnologías
@@ -159,6 +173,7 @@ Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), se dispara
 ├── index.html      # Estructura del DOM y canvas
 ├── style.css       # Estilos del juego (dark theme)
 ├── game.js         # Toda la lógica del Tetris (~300 líneas)
+├── skins.js        # Temas visuales (Retro, Neon, Pastel, Pixel art)
 └── README.md
 ```
 
