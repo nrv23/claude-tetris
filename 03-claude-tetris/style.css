@@ -375,3 +375,67 @@ kbd {
   color: #e57373;
   border-color: #e57373;
 }
+
+/* ---- Skins ---- */
+#skin-select {
+  background: #22223a;
+  color: #e0e0e0;
+  border: 1px solid #3a3a5a;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+}
+
+#skin-select:focus {
+  border-color: #7aa2f7;
+}
+
+#skin-select option {
+  background: #1a1a25;
+  color: #e0e0e0;
+}
+
+body[data-skin="neon"] {
+  background: #000;
+}
+
+body[data-skin="neon"] #board,
+body[data-skin="neon"] #next-canvas {
+  background: #050508;
+  border-color: #1f1f3a;
+  box-shadow: 0 0 30px rgba(0, 240, 255, 0.25);
+}
+
+body[data-skin="pastel"] {
+  background: #2b2540;
+}
+
+body[data-skin="pastel"] #board,
+body[data-skin="pastel"] #next-canvas {
+  background: #332c4d;
+  border-color: #4a4066;
+}
+
+body[data-skin="pixel"] {
+  background: #1b1b1b;
+}
+
+body[data-skin="pixel"] #board,
+body[data-skin="pixel"] #next-canvas {
+  background: #242424;
+  border-color: #3a3a3a;
+  image-rendering: pixelated;
+}
+
+/* El overlay cubre también el panel lateral: dejar pasar los clics fuera de la
+   caja central para poder cambiar el skin en pausa / game over. */
+.overlay {
+  pointer-events: none;
+}
+
+.overlay-box {
+  pointer-events: auto;
+}

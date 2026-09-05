@@ -45,6 +45,7 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Menú de pausa** (`P` o `Esc`) con **Reanudar**, **Reiniciar** (nueva partida sin recargar), **Ver controles** y selector de **nivel inicial** (1–15, recordado en `localStorage`). Mientras el menú está abierto ninguna tecla llega al juego.
 - **Game Over** con opción de reinicio.
 - **Tabla de records local** (top 5 con nombre, mejor combo y máximo de líneas) guardada en `localStorage`.
+- **Skins** (temas visuales) intercambiables sin recargar: Retro, Neon, Pastel y Pixel art.
 
 ---
 
@@ -160,6 +161,19 @@ Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), se dispara
 
 Expone `window.Records` con `onGameOver(stats)`, `renderStart()`, `renderInto(el)`, `clear()`, `load()` y `reset()`. Crea su UI (`#records-box`) dentro de `.overlay-box` y captura las teclas del campo de nombre con `stopPropagation()` para que no lleguen al juego.
 
+### 5. `skins.js` — temas visuales
+
+Añade un selector **SKIN** al panel lateral con cuatro apariencias completas:
+
+| Skin          | Descripción                                                                    |
+| ------------- | ------------------------------------------------------------------------------ |
+| **Retro**     | Bloques cuadrados y colores planos (el estilo original).                      |
+| **Neon**      | Fondo negro y bloques con brillo (`shadowBlur`) en colores saturados.         |
+| **Pastel**    | Paleta suave con esquinas redondeadas y un brillo blanco tenue.               |
+| **Pixel art** | Paleta tipo NES, borde oscuro, píxel de luz y textura punteada en cada bloque. |
+
+Cada skin define su paleta, el color de la rejilla y su propia función de dibujo; `game.js` delega en `Skins.drawBlock` y el cambio se aplica al instante (incluso en pausa). La preferencia se guarda en `localStorage` bajo la clave `tetris.skin` y se restaura al recargar.
+
 ---
 
 ## Tecnologías
@@ -182,6 +196,9 @@ Expone `window.Records` con `onGameOver(stats)`, `renderStart()`, `renderInto(el
 ├── style.css       # Estilos del juego (dark theme)
 ├── game.js         # Toda la lógica del Tetris (~330 líneas)
 ├── records.js      # Tabla de records en localStorage
+├── skins.js        # Temas visuales (Retro, Neon, Pastel, Pixel art)
+├── game.js         # Toda la lógica del Tetris (~300 líneas)
+├── skins.js        # Temas visuales (Retro, Neon, Pastel, Pixel art)
 └── README.md
 ```
 

@@ -190,7 +190,7 @@ function updateHUD() {
   levelEl.textContent = level;
 }
 
-function drawBlock(context, x, y, colorIndex, size, alpha) {
+function defaultDrawBlock(context, x, y, colorIndex, size, alpha) {
   if (!colorIndex) return;
   const color = COLORS[colorIndex];
   context.globalAlpha = alpha ?? 1;
@@ -202,8 +202,14 @@ function drawBlock(context, x, y, colorIndex, size, alpha) {
   context.globalAlpha = 1;
 }
 
+// Si skins.js está cargado, cada skin aporta su propia función de dibujo.
+function drawBlock(context, x, y, colorIndex, size, alpha) {
+  if (window.Skins) return Skins.drawBlock(context, x, y, colorIndex, size, alpha);
+  defaultDrawBlock(context, x, y, colorIndex, size, alpha);
+}
+
 function drawGrid() {
-  ctx.strokeStyle = '#22222e';
+  ctx.strokeStyle = window.Skins?.current().grid ?? '#22222e';
   ctx.lineWidth = 0.5;
   for (let c = 1; c < COLS; c++) {
     ctx.beginPath();
