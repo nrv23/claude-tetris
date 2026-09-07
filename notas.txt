@@ -17,3 +17,10 @@ siempre usar plan mode para que claude analice bien un prompt y muestre el plan 
 el codigo.
 
 Al crear un worktee git copia todo el proyecto en ambientes separados para rabajar features sin caerle encima a la version original
+cada vez qye se crea una habilidad o comando, se cierra y abre la sesion de claude para verla reflejada
+
+
+Skill vrs command 
+Cómo elegir: si es un procedimiento que arrancas tú en un momento puntual y con parámetros — "haz el release", "revisa este PR", "genera el changelog" — es un command. Si es expertise que quieres que Claude aplique sin que se lo recuerdes cada vez — convenciones del repo, cómo se escriben los tests aquí, el estilo de tus documentos — es un skill.
+
+Una nota práctica: la calidad del description de un skill lo es todo, porque es lo único que Claude ve para decidir si lo carga. Frases de disparo concretas ("usar cuando el usuario diga X, Y, Z") funcionan mucho mejor que descripciones vagas.
