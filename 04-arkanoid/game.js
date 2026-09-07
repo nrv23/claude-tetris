@@ -16,6 +16,13 @@ const START_LIVES = 3;
 const BRICK_COLORS = ['red', 'hotpink', 'magenta', 'yellow', 'green', 'cyan', 'gray']; // una por fila, de arriba a abajo
 const EXPLOSION_FRAME_COUNT = 4; // longitud de EXPLOSION_FRAMES[color]
 
+// Niveles
+const BALL_SPEED_BASE = Math.hypot(4, 4); // ≈ 5.66 px por frame
+const LEVEL_THRESHOLDS = [0, 150, 220, 290, 360]; // puntos de entrada; el índice 0 es el nivel 1
+const MAX_LEVEL = LEVEL_THRESHOLDS.length;
+const LEVEL_1_BRICK_POINTS = BRICK_POINTS; // 10 puntos planos, solo en el nivel 1
+const DAMAGED_ALPHA = 0.5;
+
 // Sonidos de archivo: { src, playbackRate, volume }
 const SOUND_PADDLE = { src: 'assets/sounds/ball-bounce.mp3', playbackRate: 1.0, volume: 0.6 };
 const SOUND_WALL = { src: 'assets/sounds/ball-bounce.mp3', playbackRate: 1.5, volume: 0.5 };
@@ -99,13 +106,38 @@ const state = {
   lives: START_LIVES,
   paddle: { x: 190, y: 600, w: 100, h: 14, speed: 7 },
   ball: { x: 240, y: 580, dx: 4, dy: -4, r: 8 },
-  bricks: [], // [{ x, y, w, h, color, alive }]
+  bricks: [], // [{ x, y, w, h, row, color, alive, hitsLeft }]
   keys: { left: false, right: false },
   explosions: [], // [{ x, y, w, h, color, startTime }]
+  level: 1,
+  ballSpeed: BALL_SPEED_BASE,
 };
 
+// Reglas derivadas del nivel
+function levelForScore(score) {
+  let level = 1;
+  for (let i = 0; i < LEVEL_THRESHOLDS.length; i++) {
+    if (score >= LEVEL_THRESHOLDS[i]) level = i + 1;
+  }
+  return level;
+}
+
+function hitsForLevel(level) {
+  return level === 1 ? 1 : 2;
+}
+
+function ballSpeedForLevel(level) {
+  return BALL_SPEED_BASE + (level - 1);
+}
+
+// La primera fila vale `level` puntos y cada fila siguiente suma 1
+function brickPoints(level, row) {
+  if (level === 1) return LEVEL_1_BRICK_POINTS;
+  return level + row;
+}
+
 // Bloques
-function createBricks() {
+function createBricks(level) {
   const bricks = [];
   for (let row = 0; row < BRICK_ROWS; row++) {
     for (let col = 0; col < BRICK_COLS; col++) {
@@ -114,8 +146,10 @@ function createBricks() {
         y: BRICK_TOP + row * BRICK_H,
         w: BRICK_W,
         h: BRICK_H,
+        row,
         color: BRICK_COLORS[row],
         alive: true,
+        hitsLeft: hitsForLevel(level),
       });
     }
   }
@@ -128,9 +162,11 @@ function resetGame() {
   state.lives = START_LIVES;
   state.paddle = { x: 190, y: 600, w: 100, h: 14, speed: 7 };
   state.ball = { x: 240, y: 580, dx: 4, dy: -4, r: 8 };
-  state.bricks = createBricks();
+  state.bricks = createBricks(1);
   state.keys = { left: false, right: false };
   state.explosions = [];
+  state.level = 1;
+  state.ballSpeed = BALL_SPEED_BASE;
 }
 
 resetGame();
@@ -200,7 +236,6 @@ function updatePaddle() {
   clampPaddle();
 }
 
-const BALL_SPEED = Math.hypot(4, 4); // módulo constante de la velocidad
 const MIN_BOUNCE_ANGLE = Math.PI / 6; // 30°, evita rebotes casi planos
 
 function resetBall() {
@@ -208,8 +243,10 @@ function resetBall() {
   const b = state.ball;
   b.x = p.x + p.w / 2;
   b.y = p.y - b.r - 2;
-  b.dx = 4;
-  b.dy = -4;
+  // El módulo de state.ballSpeed repartido en diagonal hacia arriba
+  const component = state.ballSpeed / Math.SQRT2;
+  b.dx = component;
+  b.dy = -component;
 }
 
 function playGameOverSound() {
@@ -242,8 +279,8 @@ function bouncePaddle() {
   // Ángulo respecto a la vertical: 0 = recto hacia arriba
   const maxTilt = Math.PI / 2 - MIN_BOUNCE_ANGLE;
   const angle = clamped * maxTilt;
-  b.dx = BALL_SPEED * Math.sin(angle);
-  b.dy = -BALL_SPEED * Math.cos(angle);
+  b.dx = state.ballSpeed * Math.sin(angle);
+  b.dy = -state.ballSpeed * Math.cos(angle);
   b.y = p.y - b.r;
   playSound(SOUND_PADDLE);
 }
@@ -298,24 +335,50 @@ function updateBricks() {
       b.y + b.r > brick.y &&
       b.y - b.r < brick.y + brick.h
     ) {
-      brick.alive = false;
-      state.explosions.push({
-        x: brick.x,
-        y: brick.y,
-        w: brick.w,
-        h: brick.h,
-        color: brick.color,
-        startTime: performance.now(),
-      });
+      brick.hitsLeft -= 1;
       playSound(SOUND_BRICK);
       b.dy = -b.dy;
-      state.score += BRICK_POINTS;
+      // El bloque solo puntúa y explota cuando se rompe; el primer golpe solo lo daña
+      if (brick.hitsLeft <= 0) {
+        brick.alive = false;
+        state.explosions.push({
+          x: brick.x,
+          y: brick.y,
+          w: brick.w,
+          h: brick.h,
+          color: brick.color,
+          startTime: performance.now(),
+        });
+        state.score += brickPoints(state.level, brick.row);
+      }
       break; // un solo bloque por frame
     }
   }
 
   if (!state.bricks.some((brick) => brick.alive) && state.explosions.length === 0) {
     state.screen = 'win';
+  }
+}
+
+// El nivel se deriva de la puntuación, así que un solo bloque puede saltar más de un umbral
+function updateLevel() {
+  const level = Math.min(MAX_LEVEL, levelForScore(state.score));
+  if (level <= state.level) return;
+  state.level = level;
+  state.ballSpeed = ballSpeedForLevel(level);
+
+  // La bola acelera conservando su dirección: la rejilla no cambia, no hay motivo para recolocarla
+  const b = state.ball;
+  const speed = Math.hypot(b.dx, b.dy);
+  if (speed > 0) {
+    b.dx = (b.dx / speed) * state.ballSpeed;
+    b.dy = (b.dy / speed) * state.ballSpeed;
+  }
+
+  // Los bloques vivos pasan a exigir 2 golpes; Math.max evita curar los ya dañados
+  const hits = hitsForLevel(level);
+  for (const brick of state.bricks) {
+    if (brick.alive) brick.hitsLeft = Math.max(brick.hitsLeft, hits);
   }
 }
 
@@ -331,6 +394,7 @@ function update() {
   updatePaddle();
   updateBall();
   updateBricks();
+  updateLevel();
   updateExplosions();
 }
 
@@ -348,7 +412,11 @@ function drawBall() {
 function drawBricks() {
   for (const brick of state.bricks) {
     if (!brick.alive) continue;
+    // A medio romper: le queda un golpe pero nació con más de uno
+    const damaged = brick.hitsLeft === 1 && hitsForLevel(state.level) > 1;
+    if (damaged) ctx.globalAlpha = DAMAGED_ALPHA;
     drawSprite(ctx, `block_${brick.color}`, brick.x, brick.y, brick.w, brick.h);
+    if (damaged) ctx.globalAlpha = 1;
   }
 }
 
@@ -375,6 +443,9 @@ function drawHUD() {
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'left';
   ctx.fillText(`Puntos: ${state.score}`, 12, BRICK_TOP / 2);
+  ctx.textAlign = 'center';
+  ctx.fillText(`Nivel ${state.level}`, CANVAS_W / 2, BRICK_TOP / 2);
+  ctx.textAlign = 'left';
   // Vidas: una bola por cada vida disponible, alineadas a la derecha
   const lifeSize = 16;
   const lifeGap = 6;
