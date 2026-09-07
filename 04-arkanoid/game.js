@@ -14,6 +14,7 @@ const BRICK_TOP = 60; // margen superior para el HUD
 const BRICK_POINTS = 10;
 const START_LIVES = 3;
 const BRICK_COLORS = ['red', 'hotpink', 'magenta', 'yellow', 'green', 'cyan', 'gray']; // una por fila, de arriba a abajo
+const EXPLOSION_FRAME_COUNT = 4; // longitud de EXPLOSION_FRAMES[color]
 
 // Estado de partida
 const state = {
@@ -24,6 +25,7 @@ const state = {
   ball: { x: 240, y: 580, dx: 4, dy: -4, r: 8 },
   bricks: [], // [{ x, y, w, h, color, alive }]
   keys: { left: false, right: false },
+  explosions: [], // [{ x, y, w, h, color, startTime }]
 };
 
 // Bloques
@@ -52,6 +54,7 @@ function resetGame() {
   state.ball = { x: 240, y: 580, dx: 4, dy: -4, r: 8 };
   state.bricks = createBricks();
   state.keys = { left: false, right: false };
+  state.explosions = [];
 }
 
 resetGame();
@@ -195,15 +198,30 @@ function updateBricks() {
       b.y - b.r < brick.y + brick.h
     ) {
       brick.alive = false;
+      state.explosions.push({
+        x: brick.x,
+        y: brick.y,
+        w: brick.w,
+        h: brick.h,
+        color: brick.color,
+        startTime: performance.now(),
+      });
       b.dy = -b.dy;
       state.score += BRICK_POINTS;
       break; // un solo bloque por frame
     }
   }
 
-  if (!state.bricks.some((brick) => brick.alive)) {
+  if (!state.bricks.some((brick) => brick.alive) && state.explosions.length === 0) {
     state.screen = 'win';
   }
+}
+
+function updateExplosions() {
+  const now = performance.now();
+  state.explosions = state.explosions.filter(
+    (explosion) => now - explosion.startTime < EXPLOSION_DURATION
+  );
 }
 
 function update() {
@@ -211,6 +229,7 @@ function update() {
   updatePaddle();
   updateBall();
   updateBricks();
+  updateExplosions();
 }
 
 // Dibujo
@@ -228,6 +247,23 @@ function drawBricks() {
   for (const brick of state.bricks) {
     if (!brick.alive) continue;
     drawSprite(ctx, `block_${brick.color}`, brick.x, brick.y, brick.w, brick.h);
+  }
+}
+
+function drawExplosions() {
+  const now = performance.now();
+  const frameDuration = EXPLOSION_DURATION / EXPLOSION_FRAME_COUNT;
+  for (const explosion of state.explosions) {
+    const elapsed = now - explosion.startTime;
+    const frame = Math.min(EXPLOSION_FRAME_COUNT - 1, Math.floor(elapsed / frameDuration));
+    drawFrame(
+      ctx,
+      EXPLOSION_FRAMES[explosion.color][frame],
+      explosion.x,
+      explosion.y,
+      explosion.w,
+      explosion.h
+    );
   }
 }
 
@@ -274,6 +310,7 @@ function draw() {
   ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
   drawHUD();
   drawBricks();
+  drawExplosions();
   drawPaddle();
   drawBall();
   drawScreen();
