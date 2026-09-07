@@ -16,6 +16,82 @@ const START_LIVES = 3;
 const BRICK_COLORS = ['red', 'hotpink', 'magenta', 'yellow', 'green', 'cyan', 'gray']; // una por fila, de arriba a abajo
 const EXPLOSION_FRAME_COUNT = 4; // longitud de EXPLOSION_FRAMES[color]
 
+// Sonidos de archivo: { src, playbackRate, volume }
+const SOUND_PADDLE = { src: 'assets/sounds/ball-bounce.mp3', playbackRate: 1.0, volume: 0.6 };
+const SOUND_WALL = { src: 'assets/sounds/ball-bounce.mp3', playbackRate: 1.5, volume: 0.5 };
+const SOUND_BRICK = { src: 'assets/sounds/break-sound.mp3', playbackRate: 1.0, volume: 0.7 };
+
+// Audio de archivo
+const audioCache = new Map(); // src -> HTMLAudioElement precargado
+
+function preloadSound(src) {
+  if (audioCache.has(src)) return;
+  const audio = new Audio(src);
+  audio.preload = 'auto';
+  audioCache.set(src, audio);
+}
+
+// Clona el nodo precargado para que dos golpes seguidos se solapen sin cortarse
+function playSound(config) {
+  preloadSound(config.src);
+  const source = audioCache.get(config.src);
+  const sound = source.cloneNode();
+  sound.playbackRate = config.playbackRate;
+  sound.volume = config.volume;
+  sound.play().catch(() => {}); // la política de autoplay puede rechazar; el juego no depende del audio
+}
+
+// Sonidos sintetizados (Web Audio API): duraciones en segundos
+const START_NOTES = [523, 659, 784]; // do, mi, sol
+const START_NOTE_DURATION = 0.09;
+const GAMEOVER_FREQ_START = 440;
+const GAMEOVER_FREQ_END = 110;
+const GAMEOVER_DURATION = 0.6;
+
+let audioContext = null; // creado de forma perezosa: creado al cargar el script nacería suspended
+
+function getAudioContext() {
+  if (audioContext) return audioContext;
+  const Ctor = window.AudioContext || window.webkitAudioContext;
+  if (!Ctor) return null; // navegador sin Web Audio: los sonidos sintetizados no suenan
+  audioContext = new Ctor();
+  return audioContext;
+}
+
+function playTone({ type, freqStart, freqEnd, duration, volume, startTime = 0 }) {
+  const audioCtx = getAudioContext();
+  if (!audioCtx) return;
+  const t0 = audioCtx.currentTime + startTime;
+  const oscillator = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(freqStart, t0);
+  if (freqEnd !== freqStart) {
+    oscillator.frequency.exponentialRampToValueAtTime(freqEnd, t0 + duration);
+  }
+  // Envolvente: ataque corto y decaimiento hasta 0 para que no chasquee al cortar
+  gain.gain.setValueAtTime(0, t0);
+  gain.gain.linearRampToValueAtTime(volume, t0 + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.001, t0 + duration);
+  oscillator.connect(gain);
+  gain.connect(audioCtx.destination);
+  oscillator.start(t0);
+  oscillator.stop(t0 + duration);
+}
+
+function playArpeggio(notes) {
+  notes.forEach((freq, i) => {
+    playTone({
+      type: 'square',
+      freqStart: freq,
+      freqEnd: freq,
+      duration: START_NOTE_DURATION,
+      volume: 0.2,
+      startTime: i * START_NOTE_DURATION,
+    });
+  });
+}
+
 // Estado de partida
 const state = {
   screen: 'start', // 'start' | 'playing' | 'gameover' | 'win'
@@ -65,9 +141,20 @@ function startGame() {
   state.screen = 'playing';
 }
 
+function playStartSound() {
+  playArpeggio(START_NOTES);
+}
+
 // Tecla o clic en pantallas que no son de juego
 function handleScreenInput() {
   if (state.screen === 'start' || state.screen === 'gameover' || state.screen === 'win') {
+    // Solo el arranque inicial suena; los reinicios desde game over o victoria no repiten el arpegio
+    const isFirstStart = state.screen === 'start';
+    // El primer gesto del usuario es lo que desbloquea el audio: la política de autoplay
+    // impide sonar antes, así que este es el momento más cercano posible a "al cargar"
+    const audioCtx = getAudioContext();
+    if (audioCtx) audioCtx.resume().catch(() => {});
+    if (isFirstStart) playStartSound();
     startGame();
   }
 }
@@ -125,10 +212,21 @@ function resetBall() {
   b.dy = -4;
 }
 
+function playGameOverSound() {
+  playTone({
+    type: 'sawtooth',
+    freqStart: GAMEOVER_FREQ_START,
+    freqEnd: GAMEOVER_FREQ_END,
+    duration: GAMEOVER_DURATION,
+    volume: 0.25,
+  });
+}
+
 function loseLife() {
   state.lives -= 1;
   if (state.lives <= 0) {
     state.lives = 0;
+    playGameOverSound();
     state.screen = 'gameover';
     return;
   }
@@ -147,6 +245,7 @@ function bouncePaddle() {
   b.dx = BALL_SPEED * Math.sin(angle);
   b.dy = -BALL_SPEED * Math.cos(angle);
   b.y = p.y - b.r;
+  playSound(SOUND_PADDLE);
 }
 
 function updateBall() {
@@ -159,9 +258,11 @@ function updateBall() {
   if (b.x - b.r < 0) {
     b.x = b.r;
     b.dx = -b.dx;
+    playSound(SOUND_WALL);
   } else if (b.x + b.r > CANVAS_W) {
     b.x = CANVAS_W - b.r;
     b.dx = -b.dx;
+    playSound(SOUND_WALL);
   }
 
   // Techo
@@ -206,6 +307,7 @@ function updateBricks() {
         color: brick.color,
         startTime: performance.now(),
       });
+      playSound(SOUND_BRICK);
       b.dy = -b.dy;
       state.score += BRICK_POINTS;
       break; // un solo bloque por frame
@@ -324,5 +426,7 @@ function loop() {
 }
 
 loadSpritesheet(() => {
+  preloadSound(SOUND_PADDLE.src);
+  preloadSound(SOUND_BRICK.src);
   requestAnimationFrame(loop);
 });
