@@ -1,6 +1,6 @@
 # SPEC 02 — Animación de explosión al destruir bloques
 
-> **Estado:** Aprobado
+> **Estado:** Implementado
 > **Depende de:** SPEC 01
 > **Fecha:** 2026-09-06
 > **Objetivo:** Mostrar la animación de explosión del spritesheet (`EXPLOSION_FRAMES`) durante 150 ms en el lugar de cada bloque destruido, sin alterar la jugabilidad del MVP.
